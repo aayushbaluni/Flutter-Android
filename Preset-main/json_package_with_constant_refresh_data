@@ -1,0 +1,153 @@
+
+import 'dart:convert';
+
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/painting.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/http.dart';
+
+class Mains extends StatelessWidget {
+  final username;
+  final password;
+  const Mains({Key? key, required this.username, required this.password})
+      : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    return Scaffold(
+        body: Container(
+          child: Column(
+            children: [
+              Container(
+                height: 70,
+                decoration: BoxDecoration(
+                  color: Colors.teal,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "All Device Monitoring",
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 30,
+                          fontWeight: FontWeight.bold),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 5.0),
+                      child: IconButton(
+                          onPressed: () {},
+                          icon: Icon(
+                            Icons.account_circle,
+                            color: Colors.white,
+                            size: 30,
+                          )),
+                    )
+                  ],
+                ),
+              ),
+              SizedBox(
+                height: 10.0,
+              ),
+              Container(
+                width: width * 0.9,
+                child: TextField(
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                      hintText: 'Search by Mac-Address',
+                      suffixIcon: Icon(
+                        Icons.search,
+                        size: 30.0,
+                      )),
+                ),
+              ),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: StreamBuilder(
+                  stream: Stream.periodic(Duration(seconds: 5)).asyncMap((i) =>
+                      getData(username,
+                          password)), // i is null here (check periodic docs)
+                  builder: (context,AsyncSnapshot<List> snapshot) {
+
+                    if(snapshot.hasData){
+
+                      print(snapshot.data![0]);
+                      return   Container(
+                        height: MediaQuery.of(context).size.height*.8,
+                        width: MediaQuery.of(context).size.width,
+                        child: Column(
+                          children: [
+                            Expanded(child: ListView.builder(
+                                shrinkWrap:true,
+                                scrollDirection: Axis.vertical,
+                                itemCount: 10,
+                                itemBuilder: (BuildContext context,int index){
+                                  return Container(
+                                    width: 70,
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: Colors.black45,width: 0.9,style: BorderStyle.solid),
+                                    ),
+                                    child: Text(snapshot.data![index].MAC),
+                                  );
+                                }))
+                          ],
+                        ),
+                      );
+
+                    }
+                    else
+                    {
+                      return Container(
+                        height: MediaQuery.of(context).size.height*.8,
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: Colors.teal,
+                          ),
+                        ),
+                      );
+                    }
+                  }, // builder should also handle the case when data is not fetched yet
+                ),
+              ),
+
+            ],
+          ),
+        ));
+  }
+}
+
+Future<List> getData(String username, String password) async {
+  String basicAuth =
+      'Basic ' + base64Encode(utf8.encode('$username:$password'));
+  return await get(
+      Uri.parse(url ),
+      headers: <String, String>{'authorization': basicAuth}).then((response) {
+    if (response.statusCode == 200) {
+      debugPrint(response.body);
+      print(response.body.length);
+      return  json.decode(response.body)['records'].map(
+              (data)=>MacAddress.fromJson(data)
+      ).toList();
+
+    } else {
+      throw Exception('Failed to load post');
+    }
+  }
+  ).whenComplete(()=>print("Recieved All Data!"));
+
+
+}
+class MacAddress{
+  final MAC;
+  const MacAddress({
+    required this.MAC
+  });
+  @override toString() => 'Mac: $MAC';
+  factory MacAddress.fromJson(Map<String,dynamic> json){
+    return new MacAddress(MAC: json['MAC']);
+
+  }
+}

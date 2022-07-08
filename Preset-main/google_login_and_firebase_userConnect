@@ -1,0 +1,131 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+
+import 'Home.dart';
+
+class AnimatedLogin extends StatefulWidget {
+  const AnimatedLogin({Key? key}) : super(key: key);
+
+  @override
+  _AnimatedLoginState createState() => _AnimatedLoginState();
+}
+
+class _AnimatedLoginState extends State<AnimatedLogin> {
+  bool isAuth = false;
+  List? userDetails;
+  final userRef = FirebaseFirestore.instance.collection('users');
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  LoginGoogle() {
+    _googleSignIn.signIn();
+  }
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    _googleSignIn.onCurrentUserChanged.listen((account) {
+      handleSignIn(account);
+    }).onError((e) {
+      print("Error occured: $e");
+    });
+
+    _googleSignIn.signInSilently(suppressErrors: false).then((account) {
+      handleSignIn(account);
+    }).catchError((e) {
+      print(e);
+    });
+  }
+
+  handleSignIn(account) {
+    if (account != null) {
+      print("User signed in: $account");
+      CheckUsers();
+      setState(() {
+        isAuth = true;
+      });
+    } else {
+      print("Sorry error occured: ");
+    }
+  }
+
+  CheckUsers() async {
+    final GoogleSignInAccount? user = _googleSignIn.currentUser;
+    final doc = await userRef.doc(user!.id).get();
+    if (!doc.exists) {
+      userRef.doc(user.id).set({
+        'id': user.id,
+        "DisplayName": user.displayName,
+        "Email": user.email,
+        'photoUrl': user.photoUrl,
+      });
+    }
+  }
+
+  Login() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
+      child: Container(
+        height: MediaQuery.of(context).size.height,
+        width: MediaQuery.of(context).size.width,
+        decoration: BoxDecoration(
+            gradient: LinearGradient(
+                colors: [Colors.teal, Colors.purple],
+                begin: Alignment.bottomRight,
+                end: Alignment.topLeft)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              height: MediaQuery.of(context).size.height * .7,
+              width: MediaQuery.of(context).size.width * .9,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.only(top: 40.0, bottom: 10),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Login',
+                      style: TextStyle(
+                          color: Colors.teal,
+                          fontSize: 50,
+                          fontWeight: FontWeight.bold),
+                    ),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.vertical,
+                      child: Container(
+                          child: GestureDetector(
+                        onTap: LoginGoogle,
+                        onDoubleTap: LoginGoogle,
+                        child: Container(
+                          width: 200.0,
+                          height: 60.0,
+                          decoration: BoxDecoration(
+                            image: DecorationImage(
+                              image: AssetImage(
+                                "assets/signin.PNG",
+                              ),
+                              fit: BoxFit.fitWidth,
+                            ),
+                          ),
+                        ),
+                      )),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(body: isAuth ? Home() : Login());
+  }
+}
